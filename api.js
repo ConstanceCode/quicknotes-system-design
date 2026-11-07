@@ -30,6 +30,9 @@ function setBusy(isBusy) {
   busy = isBusy;
   loadBtn.disabled = isBusy;
   submitBtn.disabled = isBusy;
+  for (const button of notesList.querySelectorAll(".delete-btn")) {
+    button.disabled = isBusy;
+  }
 }
 
 // Empty state: shown when there are no notes to display
@@ -44,6 +47,12 @@ function removeEmptyMessage() {
   const message = notesList.querySelector(".empty-message");
   if (message) {
     message.remove();
+  }
+}
+
+function showEmptyMessageIfListIsEmpty() {
+  if (notesList.querySelector(".note-card") === null && notesList.querySelector(".empty-message") === null) {
+    showEmptyMessage();
   }
 }
 
@@ -69,6 +78,15 @@ function createNoteCard(note) {
   const idLabel = document.createElement("span");
   idLabel.textContent = `Note #${note.id}`;
   meta.appendChild(idLabel);
+
+  const deleteBtn = document.createElement("button");
+  deleteBtn.type = "button";
+  deleteBtn.className = "delete-btn";
+  deleteBtn.textContent = "Delete";
+  deleteBtn.disabled = busy;
+  deleteBtn.setAttribute("aria-label", `Delete note: ${note.title}`);
+  deleteBtn.addEventListener("click", () => deleteNote(note.id, card));
+  meta.appendChild(deleteBtn);
 
   card.appendChild(meta);
   return card;
@@ -173,6 +191,35 @@ async function createNote(title, body) {
   } catch (error) {
     console.error("Could not create the note:", error);
     setStatus("Sorry, we could not create your note. Please try again.", "error");
+  } finally {
+    setBusy(false);
+  }
+}
+
+// ----- DELETE: remove a note -----
+// IMPORTANT: JSONPlaceholder only pretends to save changes. It answers POST and DELETE
+// with a success status, but nothing is really stored or removed on the server. Also,
+// every note we create gets the same fake id (101), so the id cannot tell our cards apart.
+// My approach:
+//   1. Send the real DELETE request anyway, so the code works the same way with a real API.
+//   2. Only if the server answers with a success status, remove that exact card
+//      (the card element is passed in, we do not search by id) and update the page.
+//   3. If the request fails, keep the card and show an error message.
+// Because the server never really deletes anything, loading the notes again brings the
+// original 10 back. That is expected with this practice API; a real backend would not do this.
+async function deleteNote(id, card) {
+  setBusy(true);
+  setStatus(`Deleting note #${id}...`, "loading");
+
+  try {
+    const { status } = await request(`${API_URL}/${id}`, { method: "DELETE" });
+
+    card.remove();
+    showEmptyMessageIfListIsEmpty();
+    setStatus(`Note #${id} deleted (status ${status}).`, "success");
+  } catch (error) {
+    console.error("Could not delete the note:", error);
+    setStatus(`Sorry, we could not delete note #${id}. Please try again.`, "error");
   } finally {
     setBusy(false);
   }
