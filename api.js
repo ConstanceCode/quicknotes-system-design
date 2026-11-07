@@ -5,6 +5,10 @@
 const loadBtn = document.querySelector("#load-btn");
 const statusMessage = document.querySelector("#status");
 const notesList = document.querySelector("#notes-list");
+const noteForm = document.querySelector("#note-form");
+const titleInput = document.querySelector("#title-input");
+const bodyInput = document.querySelector("#body-input");
+const submitBtn = document.querySelector("#submit-btn");
 
 // ----- Constants and state -----
 const API_URL = "https://jsonplaceholder.typicode.com/posts";
@@ -25,6 +29,7 @@ function setStatus(message, type) {
 function setBusy(isBusy) {
   busy = isBusy;
   loadBtn.disabled = isBusy;
+  submitBtn.disabled = isBusy;
 }
 
 // Empty state: shown when there are no notes to display
@@ -33,6 +38,13 @@ function showEmptyMessage() {
   message.className = "empty-message";
   message.textContent = "No notes to show yet.";
   notesList.appendChild(message);
+}
+
+function removeEmptyMessage() {
+  const message = notesList.querySelector(".empty-message");
+  if (message) {
+    message.remove();
+  }
 }
 
 // Build one note card. All user and server text is inserted with textContent only.
@@ -130,5 +142,62 @@ async function loadNotes() {
   }
 }
 
+// ----- Validation -----
+// Returns an error message, or "" if the title is fine
+function validateTitle(title) {
+  if (title === "") {
+    return "Please enter a title for your note.";
+  }
+  if (title.length > MAX_TITLE_LENGTH) {
+    return `The title must be ${MAX_TITLE_LENGTH} characters or fewer (it is ${title.length}).`;
+  }
+  return "";
+}
+
+// ----- POST: create a note -----
+async function createNote(title, body) {
+  setBusy(true);
+  setStatus("Creating note...", "loading");
+
+  try {
+    const { status, data } = await request(API_URL, {
+      method: "POST",
+      body: JSON.stringify({ title, body, userId: 1 }),
+    });
+
+    removeEmptyMessage();
+    notesList.prepend(createNoteCard(data));
+    noteForm.reset();
+    titleInput.removeAttribute("aria-invalid");
+    setStatus(`Note created (status ${status}, id ${data.id}).`, "success");
+  } catch (error) {
+    console.error("Could not create the note:", error);
+    setStatus("Sorry, we could not create your note. Please try again.", "error");
+  } finally {
+    setBusy(false);
+  }
+}
+
 // ----- Events -----
 loadBtn.addEventListener("click", loadNotes);
+
+noteForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+
+  if (busy) {
+    return;
+  }
+
+  const title = titleInput.value.trim();
+  const body = bodyInput.value.trim();
+
+  const problem = validateTitle(title);
+  if (problem) {
+    setStatus(problem, "error");
+    titleInput.setAttribute("aria-invalid", "true");
+    titleInput.focus();
+    return;
+  }
+
+  createNote(title, body);
+});
