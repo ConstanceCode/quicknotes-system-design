@@ -14,6 +14,19 @@
     </header>
 
     <main>
+      <section aria-labelledby="create-heading">
+        <h2 id="create-heading">Create a note</h2>
+        <form id="note-form">
+          <label for="title-input">Title (required, up to 100 characters)</label>
+          <input type="text" id="title-input" placeholder="Note title" autocomplete="off" />
+
+          <label for="body-input">Body (optional)</label>
+          <textarea id="body-input" rows="4" placeholder="Write something..."></textarea>
+
+          <button type="submit" id="submit-btn">Add note</button>
+        </form>
+      </section>
+
       <section aria-labelledby="notes-heading">
         <h2 id="notes-heading">Notes from the server</h2>
         <button type="button" id="load-btn">Load notes</button>
